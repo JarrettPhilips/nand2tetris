@@ -1,8 +1,6 @@
-
 /*
 Hack Computer Assembler
 */
-
 
 #include <iostream>
 #include <sstream>
@@ -15,8 +13,8 @@ Hack Computer Assembler
 
 #include "assembler.h"
 
-const std::string asm_filename = "Add.asm";
-const std::string hack_filename = "y.hack";
+const std::string asm_filename = "PongL.asm";
+const std::string hack_filename = "PongL.hack";
 const bool verbose = true;
 
 std::unordered_map<std::string, std::string> dest_map;
@@ -30,6 +28,7 @@ void initialize_tables(){
     dest_map["D"] =     "010";
     dest_map["MD"] =    "011";
     dest_map["A"] =     "100";
+    dest_map["0"] =     "000";
     dest_map["AM"] =    "101";
     dest_map["AD"] =    "110";
     dest_map["AMD"] =   "111";
@@ -49,7 +48,7 @@ void initialize_tables(){
     comp_map["D"] =     "001100";
     comp_map["A"] =     "110000";
     comp_map["!D"] =    "001101";
-    comp_map["!A"] =    "110000";
+    comp_map["!A"] =    "110001";
     comp_map["D+1"] =   "011111";
     comp_map["A+1"] =   "110111";
     comp_map["D-1"] =   "001110";
@@ -58,7 +57,7 @@ void initialize_tables(){
     comp_map["D-A"] =   "010011";
     comp_map["A-D"] =   "000111";
     comp_map["D&A"] =   "000000";
-    // std::cout << jump_map["JMP" ] << "\n"; // call like this
+    comp_map["D|A"] =   "010101";
 }
 
 bool is_substr_in_str(std::string m, std::string substr){
@@ -93,18 +92,6 @@ std::string decimal_to_binary_str(std::string m){
     return s;
 }
 
-std::string translate_dest(std::string m){
-    
-}
-
-std::string translate_comp(std::string m){
-
-}
-
-std::string translate_jump(std::string m){
-
-}
-
 std::string get_symbol(std::string m){
     return "000000000000000";
 }
@@ -128,45 +115,57 @@ std::string assemble_a_instruction(std::string m){
 
 std::string assemble_c_instruction(std::string m){
     std::string prefix = "111";
-    
-    // is a=1? A v M
-    std::string a_bit = "0";
-     if (m.find("M") != std::string::npos) {
-        a_bit = "1";
-        
-        int i = m.find("M");
-        m = m.substr(0, i)+"A"+m.substr(i+1, m.size());
+    int action_index = int(m.find("="));
+    if(action_index == -1){
+        action_index = int(m.find(";"));
     }
-    //
-    std::string comp = "000000";
+    std::cout << action_index << "\n";
+    std::string m_prefix = m.substr(0, action_index);
+    std::string m_action = m.substr(action_index, 1);
+    std::string m_suffix = m.substr(action_index+1, m.size());
 
-    std::string dest = "000";
-
-    std::string jump = "000";
-
+    std::string a_bit = "0";
+    std::string dest;
+    std::string comp;
+    std::string jump;
+    
+    std::cout << "action:" << m_action << " suffix:" << m_suffix << "\n";
+    if(m_action == "="){
+        // is a=1? A v M
+        dest = dest_map[m_prefix];
+        if(int(m_suffix.find("M")) != -1) {
+            a_bit = "1";
+            
+            int i = int(m_suffix.find("M"));
+            m_suffix = m_suffix.substr(0, i)+"A"+m_suffix.substr(i+1, m_suffix.size());
+        }
+        comp = comp_map[m_suffix];
+        jump = "000";
+    } else if(m_action == ";") {
+        dest = "000";
+        comp = comp_map[m_prefix];
+        jump = jump_map[m_suffix];
+    } else {
+        std::cout << "E: unknown computation instruction type\n";
+        std::cout << m << "\n";
+        throw std::runtime_error("E: unknown computation instruction type");
+    }
+    std::cout << "prefix:" << prefix << " a:" << a_bit << " comp:" 
+        << comp << " dest:" << dest << " jump:" << jump << "\n";
     return prefix+a_bit+comp+dest+jump;
 }
 
+
 #ifndef TEST_MODE
 int main(int argc, char *argv[]){
-
     initialize_tables();
-
-
     std::ifstream infile(asm_filename);
-    // std::cout << "argc == " << argc << '\n';
+    std::ofstream hack_file;
+    hack_file.open(hack_filename);
     int i = 0;
-    // while(1){
-    //     i ++;
-    //     std::string line;
-    //     std::getline(std::cin, line);
-    //     std::cout << "line";
-    //     std::cout << "line:" << i << "\n";
-    //     if (line == ""){break;}
-    // }
 
     std::string line;
-    while (std::getline(infile, line)){
+    while(std::getline(infile, line)){
         // std::istringstream iss(line);
         
         // clean input of anything unnecessary
@@ -174,7 +173,7 @@ int main(int argc, char *argv[]){
         if(line.substr(0,2) == "//"){
             continue;
         }
-        if (line.empty() || std::all_of(line.begin(), line.end(), is_whitespace_char)){
+        if(line.empty() || std::all_of(line.begin(), line.end(), is_whitespace_char)){
             continue;
         }
         line.erase(std::remove(line.begin(), line.end(), ' '), line.end());
@@ -183,13 +182,16 @@ int main(int argc, char *argv[]){
 
         // determine type of command (@)
         std::string bytecode;
-        if(line.substr(0,1) == "@"){
+        if(int(line.find("@") != -1)){
             bytecode = assemble_a_instruction(line);
-        } else if(line.substr(1,2) == "@"){
+        } else if(int(line.find("=") != -1) || int(line.find(";") != -1)){
             bytecode = assemble_c_instruction(line);
         } else {
+            std::cout << line << "\n";
             throw std::runtime_error("E: unknown instruction type");
         }
+        hack_file << bytecode << "\n";
+
 
         if(!verbose){
             continue;
@@ -203,9 +205,7 @@ int main(int argc, char *argv[]){
         std::cout << "------\n"; 
     }
 
-
-
-
+    hack_file.close();
     return 0;
 }
 #endif
