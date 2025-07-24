@@ -10,17 +10,27 @@ Hack Computer Assembler
 #include <cctype>    // for std::isspace
 #include <unordered_map>
 #include <bitset>
+#include <vector>
 
 #include "assembler.h"
 
-const std::string asm_filename = "PongL.asm";
-const std::string hack_filename = "PongL.hack";
+const std::string asm_filename = "Pong.asm";
+const std::string hack_filename = "Pong.hack";
 const bool verbose = true;
 
 std::unordered_map<std::string, std::string> dest_map;
 std::unordered_map<std::string, std::string> comp_map;
 std::unordered_map<std::string, std::string> jump_map;
+std::unordered_map<std::string, std::string> symbol_map;
+int current_address_in_memory = 16;
 
+std::string decimal_to_binary_str(std::string m){
+    int num = std::stoi(m);
+    std::string s = std::bitset<15>(num).to_string();
+    std::cout << "converting: " << m << "\n";
+    std::cout << "to: " << s << "\n";
+    return s;
+}
 
 void initialize_tables(){
     dest_map["null"] =  "000";
@@ -58,6 +68,30 @@ void initialize_tables(){
     comp_map["A-D"] =   "000111";
     comp_map["D&A"] =   "000000";
     comp_map["D|A"] =   "010101";
+
+    symbol_map["SP"] =      decimal_to_binary_str("0");
+    symbol_map["LCL"] =     decimal_to_binary_str("1");
+    symbol_map["ARG"] =     decimal_to_binary_str("2");
+    symbol_map["THIS"] =    decimal_to_binary_str("3");
+    symbol_map["THAT"] =    decimal_to_binary_str("4");
+    symbol_map["R0"] =      decimal_to_binary_str("0");
+    symbol_map["R1"] =      decimal_to_binary_str("1");
+    symbol_map["R2"] =      decimal_to_binary_str("2");
+    symbol_map["R3"] =      decimal_to_binary_str("3");
+    symbol_map["R4"] =      decimal_to_binary_str("4");
+    symbol_map["R5"] =      decimal_to_binary_str("5");
+    symbol_map["R6"] =      decimal_to_binary_str("6");
+    symbol_map["R7"] =      decimal_to_binary_str("7");
+    symbol_map["R8"] =      decimal_to_binary_str("8");
+    symbol_map["R9"] =      decimal_to_binary_str("9");
+    symbol_map["R10"] =     decimal_to_binary_str("10");
+    symbol_map["R11"] =     decimal_to_binary_str("11");
+    symbol_map["R12"] =     decimal_to_binary_str("12");
+    symbol_map["R13"] =     decimal_to_binary_str("13");
+    symbol_map["R14"] =     decimal_to_binary_str("14");
+    symbol_map["R15"] =     decimal_to_binary_str("15");
+    symbol_map["SCREEN"] =  decimal_to_binary_str("16384");
+    symbol_map["KBD"] =     decimal_to_binary_str("24576");
 }
 
 bool is_substr_in_str(std::string m, std::string substr){
@@ -84,16 +118,53 @@ bool is_number(std::string m){
     return is_int;
 }
 
-std::string decimal_to_binary_str(std::string m){
-    int num = std::stoi(m);
-    std::string s = std::bitset<15>(num).to_string();
-    std::cout << "converting: " << m << "\n";
-    std::cout << "to: " << s << "\n";
-    return s;
+std::string clean_line(std::string line){
+    // clean input of anything unnecessary
+    // commented lines, blank lines, whitespace, endline characters
+    if(line.substr(0,2) == "//"){
+        line = "";
+    }
+    if(line.empty() || std::all_of(line.begin(), line.end(), is_whitespace_char)){
+        line = ""; 
+    }
+    line.erase(std::remove(line.begin(), line.end(), ' '), line.end());
+    line = line.substr(0, line.size()-1);
+    return line;
 }
 
-std::string get_symbol(std::string m){
-    return "000000000000000";
+void print_map(std::unordered_map<std::string, std::string> map){
+    std::vector<std::string> keys;
+    keys.reserve(map.size());
+    std::vector<std::string> vals;
+    vals.reserve(map.size());
+
+    for(auto kv : map) {
+        keys.push_back(kv.first);
+        vals.push_back(kv.second);
+        std::cout << "key:" << kv.first << " val:" << kv.second << "\n";
+    } 
+}
+
+std::string handle_symbol(std::string key){
+    // if(verbose == 1){
+    //     print_map(symbol_map);
+    //     std::cout << "key to handle:" << key << "\n";
+    // }
+    std::string value = symbol_map[key];
+    if(value == ""){
+        symbol_map[key] = decimal_to_binary_str(std::to_string(current_address_in_memory));
+        current_address_in_memory ++;
+        value = symbol_map[key];
+    }
+    return value;
+}
+
+std::string handle_label(std::string key, int instruction_counter){
+    std::string value = symbol_map[key];
+    if(value == ""){
+        symbol_map[key] = decimal_to_binary_str(std::to_string(instruction_counter));
+    }
+    return value;
 }
 
 std::string assemble_a_instruction(std::string m){
@@ -101,13 +172,16 @@ std::string assemble_a_instruction(std::string m){
     std::string prefix = "0";
     std::string value;
     m = m.substr(1, m.size());
+    if(int(m.find(")")) != -1){
+        m = m.substr(1, m.size()-2);
+    }
     std::cout << m << "\n";
     if(is_number(m)){
         std::cout << "d \n";
         value = decimal_to_binary_str(m);
     } else {
-        std::cout << "sdf\n";
-        value = get_symbol(m);
+        std::cout << m << "\n";
+        value = handle_symbol(m);
     }
 
     return prefix+value;
@@ -159,27 +233,31 @@ std::string assemble_c_instruction(std::string m){
 #ifndef TEST_MODE
 int main(int argc, char *argv[]){
     initialize_tables();
-    std::ifstream infile(asm_filename);
+    
+    std::ifstream first_pass(asm_filename);
+    int i = 0;
+    std::string line;
+    while(std::getline(first_pass, line)){
+        line = clean_line(line);
+        if(line == ""){
+            continue;
+        } else if(int(line.find("(") != -1)){
+            std::string label = line.substr(1, line.size()-2);
+            handle_label(label, i);
+        } else {
+            i ++;
+        }
+    }
+
+    std::ifstream second_pass(asm_filename);
     std::ofstream hack_file;
     hack_file.open(hack_filename);
-    int i = 0;
-
-    std::string line;
-    while(std::getline(infile, line)){
-        // std::istringstream iss(line);
-        
-        // clean input of anything unnecessary
-        // commented lines, blank lines, whitespace, endline characters
-        if(line.substr(0,2) == "//"){
+    i = 0;
+    while(std::getline(second_pass, line)){
+        line = clean_line(line);
+        if(line == "" || (int(line.find("(") != -1))){
             continue;
         }
-        if(line.empty() || std::all_of(line.begin(), line.end(), is_whitespace_char)){
-            continue;
-        }
-        line.erase(std::remove(line.begin(), line.end(), ' '), line.end());
-        line = line.substr(0, line.size()-1);
-        
-
         // determine type of command (@)
         std::string bytecode;
         if(int(line.find("@") != -1)){
@@ -199,9 +277,9 @@ int main(int argc, char *argv[]){
         std::cout << line << "\n";
         std::cout << bytecode << "\n";
         std::cout << "l:" << line.size() << "\n";
-        for (int j=0; j<line.size()-1; j++){
-            std::cout << line[j] << "\n";
-        }
+        // for (int j=0; j<line.size()-1; j++){
+        //     std::cout << line[j] << "\n";
+        // }
         std::cout << "------\n"; 
     }
 

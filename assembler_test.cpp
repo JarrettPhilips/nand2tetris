@@ -54,5 +54,20 @@ TEST_CASE("Check assemble_c_instruction", "[assemble]") {
     expected = "1110101010000111";
     CAPTURE(result, expected);
     CHECK(result == expected);
+}
 
+TEST_CASE("Check handle symbol", "[symbol]"){
+    initialize_tables();
+
+    handle_label("END_EQ", 15);
+    std::string result = assemble_a_instruction("@END_EQ");
+    std::string expected = "0000000000001111";
+    CAPTURE(result, expected);
+    CHECK(result == expected);
+
+    // assemble_a_instruction("@ponggame.0");
+    result = assemble_a_instruction("@ponggame.0");
+    expected = "0000000000010000";
+    CAPTURE(result, expected);
+    CHECK(result == expected);
 }
