@@ -1,0 +1,89 @@
+class Lander {
+    
+	field Array pos;
+	field Array vel;
+	field Array acc;
+	field int yaw;
+	field int throttle;
+
+	function void lander(){
+		let pos = Array.new(2);
+		pos[0] = 0;
+		pos[1] = 100;
+		let vel = Array.new(2);
+		vel[0] = 0;
+		vel[1] = 0;
+		let acc = Array.new(2);
+		acc[0] = 0;
+		acc[1] = 0;
+		let yaw = 0;
+		let throttle = 0;
+	}
+
+	function void iterate_physics(){
+		// forgive me lord for these physics
+
+		// add gravity
+		var int gravity;
+		let gravity = -1;
+		let acc[1] = acc[1] + gravity;
+
+		// calculate thrust x/y components
+		var int thrust;
+		let thrust = throttle * 1;
+		if(yaw == -90){
+			let acc[0] = acc[0] + thrust;
+		} else if(yaw == -45){
+			let acc[0] = acc[0] + thrust;
+			let acc[1] = acc[1] + thrust;
+		} else if(yaw == 0){
+			let acc[1] = acc[1] + thrust;
+		} else if(yaw == 45){
+			let acc[0] = acc[0] - thrust;
+			let acc[1] = acc[1] + thrust;
+		} else if(yaw == 90){
+			let acc[0] == acc[0] - thrust;
+		}
+		return;
+	}
+
+	function void yaw_right(){
+		if(yaw >= 90){
+			return;
+		}
+		do yaw = yaw + 45;
+		return;
+	}
+
+	function void yaw_left(){
+		if(yaw <= -90){
+			return;
+		}
+		do yaw = yaw - 45;
+		return;
+	}
+
+	function void increase_throttle(){
+		if(throttle >= 5){
+			return;
+		}
+		do throttle = throttle + 1;
+		return;
+	}
+
+	function void decrease_throttle(){
+		if(throttle <= 0){
+			return;
+		}
+		do throttle = throttle - 1;
+		return;
+	}
+
+	function int get_pos(){
+		return pos;
+	}
+
+	function in get_vel(){
+		return vel;
+	}
+}

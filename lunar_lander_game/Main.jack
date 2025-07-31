@@ -1,0 +1,65 @@
+class Main {
+	function void main(){
+		do Output.printString("Launching Lunar Lander!");
+		do Output.println();
+
+		var Lander lander;
+		let lander = Lander.new();
+
+		// initilize graphics in memory
+		
+		// generate terrain
+		var Terrain terrain;
+		let terrain = Terrain.new();
+
+		do main_loop();
+
+		return;	
+	}
+
+	function Array get_kbd_inputs(){
+		// wasd for thrust and yaw
+	}
+
+	function void render_graphics(Lander l){
+
+	}
+
+	function void handle_lose_game(){
+		let Output.printString("Crash - Game Over");
+		do Sys.halt();
+	}
+
+	function void handle_win_game(){
+		let Output.printString("Successful Landing!")
+		do Sys.halt();
+	}
+
+	function void main_loop(Lander lander){
+		while(1){
+			// handle kbd input
+			do handle_kbd_inputs();
+
+			// update lander physics
+			do lander.iterate_physics();
+
+			// check for collision
+			if(lander.pos[1] <= 0){
+				if(lander.vel[0] > 2){
+					do handle_lose_game();
+				}
+				if(lander.vel[1] > 1){
+					do handle_lose_game();
+				}
+				do handle_win_game();
+			}
+
+			// render graphics
+			render_graphics(lander);
+
+			//timing code
+			do Sys.wait(20);
+		}
+		return;
+	}
+}

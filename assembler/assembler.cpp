@@ -1,5 +1,12 @@
 /*
 Hack Computer Assembler
+
+Build and running unit tests:
+> ./build
+
+Run with 
+> ./assembler asm_filename hack_filename
+
 */
 
 #include <iostream>
@@ -14,8 +21,8 @@ Hack Computer Assembler
 
 #include "assembler.h"
 
-const std::string asm_filename = "Pong.asm";
-const std::string hack_filename = "Pong.hack";
+std::string asm_filename = "Pong.asm";
+std::string hack_filename = "Pong.hack";
 const bool verbose = true;
 
 std::unordered_map<std::string, std::string> dest_map;
@@ -232,6 +239,9 @@ std::string assemble_c_instruction(std::string m){
 
 #ifndef TEST_MODE
 int main(int argc, char *argv[]){
+    asm_filename = argv[0];
+    hack_filename = argv[1];
+
     initialize_tables();
     
     std::ifstream first_pass(asm_filename);
