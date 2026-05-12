@@ -239,8 +239,8 @@ std::string assemble_c_instruction(std::string m){
 
 #ifndef TEST_MODE
 int main(int argc, char *argv[]){
-    asm_filename = argv[0];
-    hack_filename = argv[1];
+    asm_filename = argv[1];
+    hack_filename = argv[2];
 
     initialize_tables();
     
